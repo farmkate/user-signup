@@ -21,20 +21,17 @@ import re
 USER_RE = re.compile( "^[a-zA-Z0-9_-]{3,20}$")
 PASS_RE = re.compile("^.{3,20}$")
 EMAIL_RE = re.compile("^[\S]+@[\S]+.[\S]+$")
-#error_dictionary = {'USERNAME': '', 'PASSWORD': '', 'EMAIL': ''}
-#error_list = ['', '', '']
 
 def error_message(name_of_error):
     return "You didn't enter a valid %s.  Try again." % name_of_error
 
+def password_error():
+    return "Your passwords don't match."
+
 def valid_username(username):
-    #if not (USER_RE.match(username) and username):
-        #error_dictionary[USERNAME] = error_message('username')
     return USER_RE.match(username) and username
 
 def valid_password(password, verify_password):
-    #if not (PASS_RE.match(password) and password==verify_password and password):
-        #error_dictionary[PASSWORD] = error_message('password')
     return PASS_RE.match(password) and password==verify_password and password
 
 def valid_email(email):
@@ -42,11 +39,6 @@ def valid_email(email):
         return EMAIL_RE.match(email)
     else:
         return True
-
-#error_dictionary = {'USERNAME': '', 'PASSWORD': '', 'EMAIL': ''}
-#username_error = "You didn't enter a valid username.  Try again."
-#password_error = "You didn't enter a valid password.  Try again."
-#email_error = "You didn't enter a valid email.  Try again."
 
 page_header = """
 <!DOCTYPE html>
@@ -84,12 +76,12 @@ class MainHandler(webapp2.RequestHandler):
             <label>
                 Password
                 <input type='password' name='password' />
-                <div style="color: red; display: inline-block">{PASSWORD_ERROR}</div>
             </label>
             <br>
             <label>
                 Verify Password
                 <input type='password' name='verify_password' />
+                <div style="color: red; display: inline-block">{PASSWORD_ERROR}</div>
             </label>
             <br>
             <label>
@@ -109,11 +101,10 @@ class MainHandler(webapp2.RequestHandler):
         username_input=self.request.get("username_input")
         email_input=self.request.get("email_input")
 
-        #esc_username_input=cgi.escape(username_input, quote=True)
-        #esc_email_input=cgi.escape(email_input, quote=True)
+        esc_username = cgi.escape(username_input, quote=True)
+        esc_email=cgi.escape(email_input, quote=True)
 
-        self.response.write(page_header + form.format(USERNAME_INPUT=username_input, USERNAME_ERROR=username_error, PASSWORD_ERROR=password_error, EMAIL_INPUT=email_input, EMAIL_ERROR=email_error)+ page_footer)
-
+        self.response.write(page_header + form.format(USERNAME_ERROR=username_error, USERNAME_INPUT=esc_username, PASSWORD_ERROR=password_error, EMAIL_INPUT=esc_email, EMAIL_ERROR=email_error)+ page_footer)
 
     def get(self):
         self.write_form()
@@ -133,31 +124,21 @@ class SignedUp(webapp2.RequestHandler):
         password_ok = valid_password(password, verify_password)
         email_ok = valid_email(email_input)
 
-        #esc_username_input = ''
-        #esc_email_input = ''
+        username_error_message = ''
+        password_error_message = ''
+        email_error_message = ''
 
-        if username_ok:
-            username_error_message = ''
-            esc_username_input = ''
-        else:
+        if not username_ok:
             username_error_message = error_message('username')
-            esc_username_input = cgi.escape(username_input, quote=True)
 
+        if not password_ok:
+            password_error_message = password_error()
 
-        if password_ok:
-            password_error_message = ''
-        else:
-            password_error_message = error_message('password')
-
-        if email_ok:
-            email_error_message = ''
-            esc_email_input = ''
-        else:
+        if not email_ok:
             email_error_message = error_message('email')
-            esc_email_input = cgi.escape(email_input, quote=True)
 
         if not username_ok or not password_ok or not email_ok:
-            self.redirect('/?username_error=' + username_error_message + '&username_input=' + esc_username_input + '&password_error=' + password_error_message + '&email_error=' + email_error_message + '&email_input=' + esc_email_input)
+            self.redirect('/?username_error=' + username_error_message + '&username_input=' + username_input + '&password_error=' + password_error_message + '&email_error=' + email_error_message + '&email_input=' + email_input)
 
         congrats = 'Thanks for signing up!' + '<br>'
         self.response.write(congrats)
