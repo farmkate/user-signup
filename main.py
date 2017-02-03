@@ -23,16 +23,22 @@ PASS_RE = re.compile("^.{3,20}$")
 EMAIL_RE = re.compile("^[\S]+@[\S]+.[\S]+$")
 
 def error_message(name_of_error):
-    return "You didn't enter a valid %s.  Try again." % name_of_error
+    return "You didn't enter a valid %s.  Try again" % name_of_error
+
+def password_match_error():
+    return "Your passwords don't match"
 
 def password_error():
-    return "Your passwords don't match."
+    return "That's not a valid password"
 
 def valid_username(username):
     return USER_RE.match(username) and username
 
-def valid_password(password, verify_password):
-    return PASS_RE.match(password) and password==verify_password and password
+def password_match(password, verify_password):
+    return password==verify_password
+
+def valid_password(password):
+    return PASS_RE.match(password) and password
 
 def valid_email(email):
     if email:
@@ -67,35 +73,43 @@ class MainHandler(webapp2.RequestHandler):
     def write_form(self):
         form = '''
         <form action = '/complete' method = 'post'>
-            <label>
-                Username
-                <input type='text' name='username' value='{USERNAME_INPUT}'/>
-                <div style="color: red; display: inline-block">{USERNAME_ERROR}</div>
-            </label>
-            <br>
-            <label>
-                Password
-                <input type='password' name='password' />
-            </label>
-            <br>
-            <label>
-                Verify Password
-                <input type='password' name='verify_password' />
-                <div style="color: red; display: inline-block">{PASSWORD_ERROR}</div>
-            </label>
-            <br>
-            <label>
-                Email (optional)
-                <input type='text' name='email' value='{EMAIL_INPUT}'/>
-                <div style="color: red; display: inline-block">{EMAIL_ERROR}</div>
-            </label>
-            <br>
+            <table>
+                <tr>
+                    <td><label>Username</label></td>
+                    <td>
+                        <input type='text' name='username' value='{USERNAME_INPUT}'/>
+                        <div style="color: red; display: inline-block">{USERNAME_ERROR}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label>Password</label></td>
+                    <td>
+                        <input type='password' name='password' />
+                        <div style="color: red; display: inline-block">{PASSWORD_ERROR}</div>
+                    </td>
+                <tr>
+                <tr>
+                    <td><label>Verify Password</label></td>
+                    <td>
+                        <input type='password' name='verify_password' />
+                        <div style="color: red; display: inline-block">{PASSWORD_MATCH_ERROR}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label>Email (optional)<label></td>
+                    <td>
+                        <input type='text' name='email' value='{EMAIL_INPUT}'/>
+                        <div style="color: red; display: inline-block">{EMAIL_ERROR}</div>
+                    </td>
+                </tr>
+            </table>
             <input type="submit" value="Submit Query">
         </form>
         '''
 
         username_error = self.request.get("username_error")
         password_error = self.request.get("password_error")
+        password_match_error = self.request.get("password_match_error")
         email_error = self.request.get("email_error")
 
         username_input=self.request.get("username_input")
@@ -104,7 +118,7 @@ class MainHandler(webapp2.RequestHandler):
         esc_username = cgi.escape(username_input, quote=True)
         esc_email=cgi.escape(email_input, quote=True)
 
-        self.response.write(page_header + form.format(USERNAME_ERROR=username_error, USERNAME_INPUT=esc_username, PASSWORD_ERROR=password_error, EMAIL_INPUT=esc_email, EMAIL_ERROR=email_error)+ page_footer)
+        self.response.write(page_header + form.format(USERNAME_ERROR=username_error, USERNAME_INPUT=esc_username, PASSWORD_ERROR=password_error, PASSWORD_MATCH_ERROR=password_match_error,  EMAIL_INPUT=esc_email, EMAIL_ERROR=email_error)+ page_footer)
 
     def get(self):
         self.write_form()
@@ -121,7 +135,8 @@ class SignedUp(webapp2.RequestHandler):
         email_input = self.request.get('email')
 
         username_ok = valid_username(username_input)
-        password_ok = valid_password(password, verify_password)
+        password_match_ok = password_match(password, verify_password)
+        password_ok = valid_password(password)
         email_ok = valid_email(email_input)
 
         username_error_message = ''
@@ -134,13 +149,16 @@ class SignedUp(webapp2.RequestHandler):
         if not password_ok:
             password_error_message = password_error()
 
+        if not password_match_ok:
+            password_match_error_message = password_match_error()
+
         if not email_ok:
             email_error_message = error_message('email')
 
-        if not username_ok or not password_ok or not email_ok:
-            self.redirect('/?username_error=' + username_error_message + '&username_input=' + username_input + '&password_error=' + password_error_message + '&email_error=' + email_error_message + '&email_input=' + email_input)
+        if not username_ok or not password_ok or not password_match_ok or not email_ok:
+            self.redirect('/?username_error=' + username_error_message + '&username_input=' + username_input + '&password_error=' + password_error_message + '&password_match_error=' + password_match_error_message + '&email_error=' + email_error_message + '&email_input=' + email_input)
 
-        congrats = 'Thanks for signing up!' + '<br>'
+        congrats = '<h2>' + 'Welcome, ' + username_input + '!<h2>'
         self.response.write(congrats)
 
 app = webapp2.WSGIApplication([
